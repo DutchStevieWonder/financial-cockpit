@@ -90,23 +90,25 @@ export default function CsvUpload({ onComplete }) {
           bank_account_id: bankAccount.id,
           domain: bankAccount.domain,
           transaction_date: tx.transaction_date,
-          counterparty_account: tx.counterparty_account,
-          counterparty_name: tx.counterparty_name,
-          address: tx.address,
-          postcode: tx.postcode,
-          city: tx.city,
-          currency: tx.currency,
+          counterparty_account: tx.counterparty_account || null,
+          counterparty_name: tx.counterparty_name || null,
+          address: tx.address || null,
+          postcode: tx.postcode || null,
+          city: tx.city || null,
+          currency: tx.currency || 'EUR',
           balance_before: tx.balance_before,
           amount: tx.amount,
           processing_date: tx.processing_date,
           value_date: tx.value_date,
-          code: tx.code,
-          transaction_type: tx.transaction_type,
-          sequence_number: tx.sequence_number,
-          payment_reference: tx.payment_reference,
-          description: tx.description,
-          statement_number: tx.statement_number,
-          asn_category: tx.asn_category,
+          code: tx.code || null,
+          transaction_type: tx.transaction_type || null,
+          // Gebruik lege string i.p.v. null zodat de unieke constraint
+          // duplicaten correct herkent (NULL != NULL in PostgreSQL)
+          sequence_number: tx.sequence_number ?? '',
+          payment_reference: tx.payment_reference || null,
+          description: tx.description ?? '',
+          statement_number: tx.statement_number || null,
+          asn_category: tx.asn_category || null,
           category_id: categoryId,
           is_categorized: isCategorized,
         })
@@ -129,16 +131,16 @@ export default function CsvUpload({ onComplete }) {
       }
 
       setStats({ inserted, skipped, unknownAccounts: [...unknownAccounts] })
-      setStatus('done')
-      setMessage(
-        `Klaar! ${inserted} transacties opgeslagen, ${skipped} overgeslagen.`
-      )
 
-      if (unknownAccounts.size > 0) {
+      if (inserted === 0 && unknownAccounts.size > 0) {
+        setStatus('error')
         setMessage(
-          (prev) =>
-            prev +
-            ` Onbekende rekening(en): ${[...unknownAccounts].join(', ')}. Registreer deze eerst bij Instellingen.`
+          `Geen transacties opgeslagen — rekening(en) niet herkend: ${[...unknownAccounts].join(', ')}. Voeg deze rekening eerst toe via "+ Rekening toevoegen" hierboven.`
+        )
+      } else {
+        setStatus('done')
+        setMessage(
+          `Klaar! ${inserted} transacties opgeslagen${skipped > 0 ? `, ${skipped} overgeslagen` : ''}.${unknownAccounts.size > 0 ? ` Onbekende rekening(en): ${[...unknownAccounts].join(', ')}.` : ''}`
         )
       }
 
