@@ -29,7 +29,7 @@ export default function Dashboard() {
           Welkom, {profile?.display_name}
         </h2>
         <p className="text-sm text-slate-500">
-          Overzicht van je financiën
+          Overzicht van je financien
         </p>
       </div>
 
@@ -37,8 +37,7 @@ export default function Dashboard() {
         <select
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="border border-slate-300 rounded-lg px-3 py-2 text-sm
-                     focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           {months.map((m) => (
             <option key={m.value} value={m.value}>
