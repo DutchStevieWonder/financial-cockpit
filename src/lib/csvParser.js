@@ -125,6 +125,12 @@ const CATEGORY_PATTERNS = [
   { pattern: /spaarrekening|degiro|lendahand|mintos|belegg/i, category: 'Sparen & Investeren' },
 ]
 
+  // Goede doelen
+{ pattern: /giro555|unicef|rode kruis|greenpeace|amnesty|warchild|kika\b|wwf\b|oxfam|nlcares|doneer|donatie|goede doelen|effectief doneren/i, category: 'Goede doelen' },
+  // Cadeaus
+{ pattern: /cadeaubon|kadoshop|kadoland|geschenk|gift.card|bol\.com.*cadeau|prezzybox|hallmark/i, category: 'Cadeaus' },
+  // Belastingen & Toeslagen
+{ pattern: /belastingdienst|toeslagen|gemeentebelasting|ozb\b|waterschapsbelasting|rioolheffing|afvalstoffenheffing|motorrijtuigenbelasting|mrb\b|bpm\b|inkomstenbelasting|omzetbelasting|btw.aangifte|cak\b|eigen.bijdrage.wlz|centraal.justitieel|cjib\b/i, category: 'Belastingen & Toeslagen' },
 export function autoCategorize(transaction) {
   const searchText = [
     transaction.counterparty_name,
