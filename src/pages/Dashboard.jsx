@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useMonth } from '../context/MonthContext'
 import CategoryBreakdown from '../components/CategoryBreakdown'
 import BufferIndicator from '../components/BufferIndicator'
 import NetWorthOverview from '../components/NetWorthOverview'
@@ -19,7 +19,7 @@ function getMonthOptions() {
 
 export default function Dashboard() {
   const { profile, isAdmin } = useAuth()
-  const [month, setMonth] = useState(() => new Date().toISOString().substring(0, 7))
+  const { month, setMonth } = useMonth()
   const months = getMonthOptions()
 
   return (
