@@ -1,7 +1,9 @@
 import { Routes, Route } from 'react-router-dom'
 import Layout from './components/Layout'
 import ProtectedRoute from './components/ProtectedRoute'
+import { MonthProvider } from './context/MonthContext'
 import Login from './pages/Login'
+import ResetWachtwoord from './pages/ResetWachtwoord'
 import Dashboard from './pages/Dashboard'
 import Transactions from './pages/Transactions'
 import Wealth from './pages/Wealth'
@@ -11,10 +13,13 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<Login />} />
+      <Route path="/reset-wachtwoord" element={<ResetWachtwoord />} />
       <Route
         element={
           <ProtectedRoute>
-            <Layout />
+            <MonthProvider>
+              <Layout />
+            </MonthProvider>
           </ProtectedRoute>
         }
       >
