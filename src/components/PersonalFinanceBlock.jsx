@@ -15,7 +15,7 @@ export default function PersonalFinanceBlock({ month }) {
   async function fetchData() {
     setLoading(true)
 
-    const startDate = `${month}-01`
+    const startDate = month + '-01'
     const endDate = new Date(month + '-01')
     endDate.setMonth(endDate.getMonth() + 1)
     const endStr = endDate.toISOString().split('T')[0]
@@ -34,15 +34,11 @@ export default function PersonalFinanceBlock({ month }) {
 
     txs.forEach((tx) => {
       if (tx.is_transfer) return
-      if (tx.amount > 0) {
-        inkomen += tx.amount
-      } else {
-        priveUitgaven += Math.abs(tx.amount)
-      }
+      if (tx.amount > 0) inkomen += tx.amount
+      else priveUitgaven += Math.abs(tx.amount)
     })
 
-    const overschot = inkomen - priveUitgaven
-    setData({ inkomen, priveUitgaven, overschot })
+    setData({ inkomen, priveUitgaven, overschot: inkomen - priveUitgaven })
     setLoading(false)
   }
 
@@ -68,27 +64,25 @@ export default function PersonalFinanceBlock({ month }) {
           <div className="bg-emerald-50 rounded-lg p-4">
             <p className="text-xs text-emerald-600 font-medium mb-1">Salaris ontvangen</p>
             <p className="text-xl font-bold text-emerald-700">
-              €{data.inkomen.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              {data.inkomen.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
             </p>
             <p className="text-xs text-emerald-500 mt-1">Inkomen-transacties</p>
           </div>
-
           <div className="bg-slate-50 rounded-lg p-4">
-            <p className="text-xs text-slate-500 font-medium mb-1">Eigen privé-uitgaven</p>
+            <p className="text-xs text-slate-500 font-medium mb-1">Eigen prive-uitgaven</p>
             <p className="text-xl font-bold text-slate-700">
-              €{data.priveUitgaven.toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+              {data.priveUitgaven.toLocaleString('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
             </p>
             <p className="text-xs text-slate-400 mt-1">Excl. overboekingen</p>
           </div>
-
-          <div className={`rounded-lg p-4 ${data.overschot >= 0 ? 'bg-blue-50' : 'bg-amber-50'}`}>
-            <p className={`text-xs font-medium mb-1 ${data.overschot >= 0 ? 'text-blue-600' : 'text-amber-600'}`}>
+          <div className={data.overschot >= 0 ? 'bg-blue-50 rounded-lg p-4' : 'bg-amber-50 rounded-lg p-4'}>
+            <p className={data.overschot >= 0 ? 'text-xs text-blue-600 font-medium mb-1' : 'text-xs text-amber-600 font-medium mb-1'}>
               Eigen overschot
             </p>
-            <p className={`text-xl font-bold ${data.overschot >= 0 ? 'text-blue-700' : 'text-amber-700'}`}>
-              {data.overschot < 0 ? '-' : ''}€{Math.abs(data.overschot).toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+            <p className={data.overschot >= 0 ? 'text-xl font-bold text-blue-700' : 'text-xl font-bold text-amber-700'}>
+              {Math.abs(data.overschot).toLocaleString('nl-NL', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 })}
             </p>
-            <p className={`text-xs mt-1 ${data.overschot >= 0 ? 'text-blue-400' : 'text-amber-400'}`}>
+            <p className={data.overschot >= 0 ? 'text-xs text-blue-400 mt-1' : 'text-xs text-amber-400 mt-1'}>
               Salaris min uitgaven
             </p>
           </div>
