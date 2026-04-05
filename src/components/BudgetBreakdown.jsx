@@ -2,10 +2,16 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
+/**
+ * Shared expense overview with inline budget editor.
+ * Shows spending from shared accounts (Vaste lasten, Eetrekening) per category.
+ * Admin (Steven) can set monthly budgets inline by clicking on a category.
+ * Transfers are excluded from all calculations.
+ */
 export default function BudgetBreakdown({ month }) {
   const { isAdmin } = useAuth()
   const [rows, setRows] = useState([])
-  const [budgets, setBudgets] = useState({})
+  const [budgets, setBudgets] = useState({}) // categoryId → amount
   const [totalSpent, setTotalSpent] = useState(0)
   const [totalBudget, setTotalBudget] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -21,6 +27,7 @@ export default function BudgetBreakdown({ month }) {
     endDate.setMonth(endDate.getMonth() + 1)
     const endStr = endDate.toISOString().split('T')[0]
 
+    // Fetch shared domain expenses (no transfers, no income)
     const { data: txs } = await supabase
       .from('transactions')
       .select('amount, category_id, categories(id, name, color)')
@@ -30,6 +37,7 @@ export default function BudgetBreakdown({ month }) {
       .gte('transaction_date', startDate)
       .lt('transaction_date', endStr)
 
+    // Fetch all budgets
     const { data: budgetData } = await supabase
       .from('budgets')
       .select('category_id, monthly_amount')
@@ -38,6 +46,7 @@ export default function BudgetBreakdown({ month }) {
     budgetData?.forEach((b) => { budgetMap[b.category_id] = b.monthly_amount })
     setBudgets(budgetMap)
 
+    // Group by category
     const grouped = {}
     let total = 0
     txs?.forEach((tx) => {
@@ -63,7 +72,10 @@ export default function BudgetBreakdown({ month }) {
 
   async function saveBudget(categoryId) {
     const amount = parseFloat(editValue.replace(',', '.'))
-    if (isNaN(amount) || amount < 0) { setEditingId(null); return }
+    if (isNaN(amount) || amount < 0) {
+      setEditingId(null)
+      return
+    }
     setSaving(true)
     await supabase.from('budgets').upsert(
       { category_id: categoryId, monthly_amount: amount },
@@ -112,7 +124,7 @@ export default function BudgetBreakdown({ month }) {
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-semibold text-brand-500">Gezamenlijke uitgaven</h3>
         {isAdmin && (
-          <span className="text-xs text-slate-400">Klik op een categorie om budget in te stellen</span>
+          <span className="text-xs text-slate-400">Klik op categorie om budget in te stellen</span>
         )}
       </div>
 
@@ -151,7 +163,10 @@ export default function BudgetBreakdown({ month }) {
                   }}
                   disabled={!isAdmin}
                 >
-                  <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: row.color }} />
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: row.color }}
+                  />
                   <span className="text-sm text-slate-700 truncate">{row.name}</span>
                 </button>
 
@@ -179,7 +194,12 @@ export default function BudgetBreakdown({ month }) {
                       >
                         {saving ? '...' : '✓'}
                       </button>
-                      <button onClick={() => setEditingId(null)} className="text-xs text-slate-400 hover:text-slate-600 px-1">✕</button>
+                      <button
+                        onClick={() => setEditingId(null)}
+                        className="text-xs text-slate-400 hover:text-slate-600 px-1"
+                      >
+                        ✕
+                      </button>
                     </div>
                   ) : (
                     <>
@@ -187,7 +207,9 @@ export default function BudgetBreakdown({ month }) {
                         €{row.spent.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
                       </span>
                       {budget != null && (
-                        <span className="text-xs text-slate-400">/ €{Number(budget).toLocaleString('nl-NL', { minimumFractionDigits: 0 })}</span>
+                        <span className="text-xs text-slate-400">
+                          / €{Number(budget).toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
+                        </span>
                       )}
                     </>
                   )}
