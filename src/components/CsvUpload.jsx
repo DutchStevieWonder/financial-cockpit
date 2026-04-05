@@ -68,27 +68,34 @@ export default function CsvUpload({ onComplete }) {
           continue
         }
 
+        // Detect transfers: counterparty is one of our own accounts
+        const accountNumbers = new Set(bankAccounts?.map((ba) => ba.account_number) ?? [])
+        const isTransfer = !!(tx.counterparty_account && accountNumbers.has(tx.counterparty_account))
+
         // Auto-categorize: custom rules first, then built-in patterns
         let categoryId = null
         let isCategorized = false
-        if (customRules?.length > 0) {
-          categoryId = matchCustomRules(tx, customRules)
-        }
-        if (!categoryId) {
-          const categoryName = autoCategorize(tx)
-          if (categoryName && categoryMap[categoryName]) {
-            categoryId = categoryMap[categoryName]
+        if (!isTransfer) {
+          if (customRules?.length > 0) {
+            categoryId = matchCustomRules(tx, customRules)
           }
-        }
-        if (categoryId) {
-          isCategorized = true
-        } else {
-          categoryId = categoryMap['Niet-toegewezen'] || null
+          if (!categoryId) {
+            const categoryName = autoCategorize(tx)
+            if (categoryName && categoryMap[categoryName]) {
+              categoryId = categoryMap[categoryName]
+            }
+          }
+          if (categoryId) {
+            isCategorized = true
+          } else {
+            categoryId = categoryMap['Niet-toegewezen'] || null
+          }
         }
 
         records.push({
           bank_account_id: bankAccount.id,
           domain: bankAccount.domain,
+          is_transfer: isTransfer,
           transaction_date: tx.transaction_date,
           counterparty_account: tx.counterparty_account || null,
           counterparty_name: tx.counterparty_name || null,
