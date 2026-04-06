@@ -11,7 +11,22 @@ export default class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, info) {
-    console.error('[ErrorBoundary] Caught render error:', error, info)
+    // Structured log — captured by Netlify / browser DevTools
+    const logEntry = {
+      level: 'error',
+      source: 'ErrorBoundary',
+      timestamp: new Date().toISOString(),
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      error: {
+        name: error?.name,
+        message: error?.message,
+        stack: error?.stack,
+      },
+      componentStack: info?.componentStack,
+    }
+    // eslint-disable-next-line no-console
+    console.error('[FC]', JSON.stringify(logEntry))
     this.setState({ info })
   }
 
