@@ -1,12 +1,26 @@
 import { createContext, useContext, useState } from 'react'
 
+const STORAGE_KEY = 'fc_selected_month'
+
 const MonthContext = createContext(null)
 
 export function MonthProvider({ children }) {
-  const [month, setMonth] = useState(() => {
-    // Default to current month
-    return new Date().toISOString().substring(0, 7)
+  const [month, setMonthState] = useState(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY) || new Date().toISOString().substring(0, 7)
+    } catch {
+      return new Date().toISOString().substring(0, 7)
+    }
   })
+
+  function setMonth(m) {
+    try {
+      localStorage.setItem(STORAGE_KEY, m)
+    } catch {
+      // localStorage geblokkeerd (bijv. prive-modus) — stil negeren
+    }
+    setMonthState(m)
+  }
 
   return (
     <MonthContext.Provider value={{ month, setMonth }}>
