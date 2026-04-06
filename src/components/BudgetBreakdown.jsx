@@ -3,32 +3,31 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 
 const DOMAIN_LABELS = {
-  shared: 'Gezamenlijk',
-  steven: 'Steven',
-  jacomine: 'Jacomine',
+  shared:  'Gezamenlijk',
+  steven:  'Steven',
+  partner: 'Jacomine',
 }
 
 const DOMAIN_COLORS = {
-  shared: '#6366f1',
-  steven: '#0ea5e9',
-  jacomine: '#ec4899',
+  shared:  '#6366f1',
+  steven:  '#0ea5e9',
+  partner: '#ec4899',
 }
 
-const ALL_DOMAINS = ['shared', 'steven', 'jacomine']
+const ALL_DOMAINS = ['shared', 'steven', 'partner']
 
 export default function BudgetBreakdown({ month }) {
   const { isAdmin } = useAuth()
-
-  const [activeDomains, setActiveDomains] = useState(['shared', 'steven', 'jacomine'])
-  const [sortedCats, setSortedCats] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [editingKey, setEditingKey] = useState(null)
-  const [editValue, setEditValue] = useState('')
-  const [saving, setSaving] = useState(false)
+  const [activeDomains, setActiveDomains] = useState(['shared', 'steven', 'partner'])
+  const [sortedCats, setSortedCats]       = useState([])
+  const [loading, setLoading]             = useState(true)
+  const [editingKey, setEditingKey]       = useState(null)
+  const [editValue, setEditValue]         = useState('')
+  const [saving, setSaving]               = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const startDate = `${month}-01`
+    const startDate = month + '-01'
     const endDate = new Date(month + '-01')
     endDate.setMonth(endDate.getMonth() + 1)
     const endStr = endDate.toISOString().split('T')[0]
@@ -48,11 +47,11 @@ export default function BudgetBreakdown({ month }) {
 
     const grp = {}
     txs?.forEach((tx) => {
-      const catId = tx.category_id || 'uncategorized'
-      const catName = tx.categories?.name || 'Niet-toegewezen'
-      const catColor = tx.categories?.color || '#BDC3C7'
-      const dom = tx.domain
-      const amt = Math.abs(tx.amount)
+      const catId    = tx.category_id        || 'uncategorized'
+      const catName  = tx.categories?.name   || 'Niet-toegewezen'
+      const catColor = tx.categories?.color  || '#BDC3C7'
+      const dom      = tx.domain
+      const amt      = Math.abs(tx.amount)
       if (!grp[catId]) grp[catId] = { id: catId, name: catName, color: catColor, total: 0, domains: {} }
       if (!grp[catId].domains[dom]) grp[catId].domains[dom] = { spent: 0, budget: null }
       grp[catId].domains[dom].spent += amt
@@ -85,9 +84,7 @@ export default function BudgetBreakdown({ month }) {
   }
 
   function toggleDomain(domain) {
-    setActiveDomains((prev) =>
-      prev.includes(domain) ? prev.filter((d) => d !== domain) : [...prev, domain]
-    )
+    setActiveDomains(prev => prev.includes(domain) ? prev.filter(d => d !== domain) : [...prev, domain])
   }
 
   function barColor(spent, budget) {
@@ -100,51 +97,43 @@ export default function BudgetBreakdown({ month }) {
 
   if (loading) return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-      <div className="animate-pulse text-slate-400 text-sm">Laden...</div>
+      <div className="animate-pulse text-slate-400 text-sm">Laden\u2026</div>
     </div>
   )
 
-  const visibleCats = sortedCats.filter((cat) =>
-    activeDomains.some((d) => (cat.domains[d]?.spent ?? 0) > 0 || cat.domains[d]?.budget != null)
+  const visibleCats = sortedCats.filter(cat =>
+    activeDomains.some(d => (cat.domains[d]?.spent ?? 0) > 0 || cat.domains[d]?.budget != null)
   )
 
   const domainTotals = {}
-  activeDomains.forEach((d) => {
-    let spent = 0; let budget = 0
-    sortedCats.forEach((cat) => {
-      spent += cat.domains[d]?.spent ?? 0
-      budget += cat.domains[d]?.budget ?? 0
-    })
+  activeDomains.forEach(d => {
+    let spent = 0, budget = 0
+    sortedCats.forEach(cat => { spent += cat.domains[d]?.spent ?? 0; budget += cat.domains[d]?.budget ?? 0 })
     domainTotals[d] = { spent, budget }
   })
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-        <h3 className="text-lg font-semibold text-brand-500">Uitgaven per categorie</h3>
+        <h3 className="text-lg font-semibold text-brand-500">Budget per categorie</h3>
         <div className="flex gap-2 flex-wrap items-center">
-          {ALL_DOMAINS.map((d) => {
+          {ALL_DOMAINS.map(d => {
             const active = activeDomains.includes(d)
             return (
-              <button
-                key={d}
-                onClick={() => toggleDomain(d)}
-                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${
-                  active ? 'text-white border-transparent' : 'bg-white text-slate-400 border-slate-200'
-                }`}
-                style={active ? { backgroundColor: DOMAIN_COLORS[d] } : {}}
-              >
+              <button key={d} onClick={() => toggleDomain(d)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-all ${active ? 'text-white border-transparent' : 'bg-white text-slate-400 border-slate-200'}`}
+                style={active ? { backgroundColor: DOMAIN_COLORS[d] } : {}}>
                 {DOMAIN_LABELS[d]}
               </button>
             )
           })}
-          {isAdmin && <span className="text-xs text-slate-400 ml-1">klik op rekening voor budget</span>}
+          {isAdmin && <span className="text-xs text-slate-400 ml-1">klik domein-label voor budget</span>}
         </div>
       </div>
 
       {activeDomains.length > 0 && (
         <div className="flex gap-4 flex-wrap mb-5 pb-4 border-b border-slate-100">
-          {activeDomains.map((d) => {
+          {activeDomains.map(d => {
             const { spent, budget } = domainTotals[d]
             const pct = budget > 0 ? Math.min(100, (spent / budget) * 100) : null
             return (
@@ -153,13 +142,11 @@ export default function BudgetBreakdown({ month }) {
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: DOMAIN_COLORS[d] }} />
                   <span className="text-xs font-medium text-slate-500">{DOMAIN_LABELS[d]}</span>
                 </div>
-                <p className="text-base font-bold text-slate-800">
-                  €{spent.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
-                </p>
+                <p className="text-base font-bold text-slate-800">\u20ac{spent.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}</p>
                 {budget > 0 && (
                   <p className="text-xs text-slate-400">
-                    van €{budget.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
-                    {pct !== null && ` · ${pct.toFixed(0)}%`}
+                    van \u20ac{budget.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
+                    {pct !== null && ` \u00b7 ${pct.toFixed(0)}%`}
                   </p>
                 )}
               </div>
@@ -172,86 +159,58 @@ export default function BudgetBreakdown({ month }) {
         <p className="text-sm text-slate-400">Geen uitgaven gevonden voor de geselecteerde rekeningen.</p>
       ) : (
         <div className="space-y-5">
-          {visibleCats.map((cat) => {
-            const domainsToShow = activeDomains.filter(
-              (d) => (cat.domains[d]?.spent ?? 0) > 0 || cat.domains[d]?.budget != null
-            )
+          {visibleCats.map(cat => {
+            const domainsToShow = activeDomains.filter(d => (cat.domains[d]?.spent ?? 0) > 0 || cat.domains[d]?.budget != null)
             if (domainsToShow.length === 0) return null
             return (
               <div key={cat.id}>
                 <div className="flex items-center gap-2 mb-2">
                   <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
                   <span className="text-sm font-semibold text-slate-700">{cat.name}</span>
-                  <span className="text-xs text-slate-400 ml-auto">
-                    totaal €{cat.total.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
-                  </span>
+                  <span className="text-xs text-slate-400 ml-auto">totaal \u20ac{cat.total.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}</span>
                 </div>
                 <div className="space-y-2 pl-5">
-                  {domainsToShow.map((domain) => {
-                    const info = cat.domains[domain] ?? { spent: 0, budget: null }
-                    const editKey = `${cat.id}:${domain}`
+                  {domainsToShow.map(domain => {
+                    const info     = cat.domains[domain] ?? { spent: 0, budget: null }
+                    const editKey  = `${cat.id}:${domain}`
                     const isEditing = editingKey === editKey
-                    const pct = info.budget ? Math.min(100, (info.spent / info.budget) * 100) : null
-                    const color = barColor(info.spent, info.budget)
+                    const pct      = info.budget ? Math.min(100, (info.spent / info.budget) * 100) : null
+                    const color    = barColor(info.spent, info.budget)
                     return (
                       <div key={domain}>
                         <div className="flex items-center gap-2">
                           <button
-                            className={`flex items-center gap-1.5 w-[90px] text-left ${
-                              isAdmin ? 'hover:text-brand-500 cursor-pointer' : 'cursor-default'
-                            }`}
-                            onClick={() => {
-                              if (!isAdmin) return
-                              setEditingKey(isEditing ? null : editKey)
-                              setEditValue(info.budget != null ? String(info.budget) : '')
-                            }}
-                            disabled={!isAdmin}
-                          >
+                            className={`flex items-center gap-1.5 w-[90px] text-left ${isAdmin ? 'hover:text-brand-500 cursor-pointer' : 'cursor-default'}`}
+                            onClick={() => { if (!isAdmin) return; setEditingKey(isEditing ? null : editKey); setEditValue(info.budget != null ? String(info.budget) : '') }}
+                            disabled={!isAdmin}>
                             <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: DOMAIN_COLORS[domain] }} />
                             <span className="text-xs text-slate-500">{DOMAIN_LABELS[domain]}</span>
                           </button>
                           <div className="flex items-center gap-1 shrink-0 ml-auto">
                             {isEditing ? (
                               <>
-                                <span className="text-xs text-slate-400">Budget €</span>
-                                <input
-                                  type="number"
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') saveBudget(cat.id, domain)
-                                    if (e.key === 'Escape') setEditingKey(null)
-                                  }}
+                                <span className="text-xs text-slate-400">Budget \u20ac</span>
+                                <input type="number" value={editValue} onChange={e => setEditValue(e.target.value)}
+                                  onKeyDown={e => { if (e.key === 'Enter') saveBudget(cat.id, domain); if (e.key === 'Escape') setEditingKey(null) }}
                                   className="w-20 border border-brand-400 rounded px-2 py-0.5 text-sm text-right focus:outline-none"
-                                  autoFocus min={0} step={10}
-                                />
+                                  autoFocus min={0} step={10} />
                                 <button onClick={() => saveBudget(cat.id, domain)} disabled={saving}
                                   className="text-xs bg-brand-500 text-white px-2 py-0.5 rounded hover:bg-brand-600">
-                                  {saving ? '...' : '✓'}
+                                  {saving ? '\u2026' : '\u2713'}
                                 </button>
-                                <button onClick={() => setEditingKey(null)}
-                                  className="text-xs text-slate-400 hover:text-slate-600 px-1">
-                                  ✕
-                                </button>
+                                <button onClick={() => setEditingKey(null)} className="text-xs text-slate-400 hover:text-slate-600 px-1">\u2715</button>
                               </>
                             ) : (
                               <>
-                                <span className="text-xs font-medium text-slate-700">
-                                  €{info.spent.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
-                                </span>
-                                {info.budget != null && (
-                                  <span className="text-xs text-slate-400">
-                                     / €{Number(info.budget).toLocaleString('nl-NL', { minimumFractionDigits: 0 })}
-                                  </span>
-                                )}
+                                <span className="text-xs font-medium text-slate-700">\u20ac{info.spent.toLocaleString('nl-NL', { minimumFractionDigits: 0 })}</span>
+                                {info.budget != null && <span className="text-xs text-slate-400">&nbsp;/ \u20ac{Number(info.budget).toLocaleString('nl-NL', { minimumFractionDigits: 0 })}</span>}
                               </>
                             )}
                           </div>
                         </div>
                         {pct !== null && !isEditing && (
                           <div className="w-full bg-slate-100 rounded-full h-1.5 mt-1">
-                            <div className="h-full rounded-full transition-all duration-500"
-                              style={{ width: `${pct}%`, backgroundColor: color }} />
+                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
                           </div>
                         )}
                       </div>
