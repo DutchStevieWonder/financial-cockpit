@@ -1,4 +1,4 @@
-import { NavLink, Outlet } from 'react-router-dom'
+import { NavLink, Outlet, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 const navItems = [
@@ -19,9 +19,13 @@ export default function Layout() {
     <div className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="bg-brand-500 text-white px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold tracking-tight">
+        {/* Logo → home */}
+        <Link
+          to="/"
+          className="text-lg font-semibold tracking-tight text-white hover:text-brand-100 transition-colors"
+        >
           Financial Cockpit
-        </h1>
+        </Link>
         <div className="flex items-center gap-3">
           <span className="text-sm text-brand-200">
             {profile?.display_name}
@@ -40,7 +44,7 @@ export default function Layout() {
         <Outlet />
       </main>
 
-      {/* Bottom navigation (mobile-friendly) */}
+      {/* Bottom navigation */}
       <nav className="bg-white border-t border-slate-200 px-2 py-1 flex justify-around md:justify-center md:gap-8">
         {visibleItems.map((item) => (
           <NavLink
