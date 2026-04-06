@@ -1,6 +1,7 @@
 import { useAuth } from '../context/AuthContext'
 import { useMonth } from '../context/MonthContext'
 import PersonalFinanceBlock from '../components/PersonalFinanceBlock'
+import CategoryBreakdown from '../components/CategoryBreakdown'
 import BudgetBreakdown from '../components/BudgetBreakdown'
 import NetWorthOverview from '../components/NetWorthOverview'
 import GoalProgress from '../components/GoalProgress'
@@ -29,7 +30,7 @@ export default function Dashboard() {
           Welkom, {profile?.display_name}
         </h2>
         <p className="text-sm text-slate-500">
-          Overzicht van je financien
+          Overzicht van je financiën
         </p>
       </div>
 
@@ -37,7 +38,8 @@ export default function Dashboard() {
         <select
           value={month}
           onChange={(e) => setMonth(e.target.value)}
-          className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+          className="border border-slate-300 rounded-lg px-3 py-2 text-sm
+                     focus:outline-none focus:ring-2 focus:ring-brand-400"
         >
           {months.map((m) => (
             <option key={m.value} value={m.value}>
@@ -47,9 +49,19 @@ export default function Dashboard() {
         </select>
       </div>
 
+      {/* Privé blok — alleen eigen domein */}
       <PersonalFinanceBlock month={month} />
+
+      {/* Categorieën overzicht met taartdiagram — alle rekeningen gecombineerd */}
+      <CategoryBreakdown month={month} />
+
+      {/* Budget per rekening per categorie */}
       <BudgetBreakdown month={month} />
+
+      {/* Vermogensontwikkeling */}
       <NetWorthOverview />
+
+      {/* Spaardoelen */}
       <GoalProgress />
     </div>
   )
