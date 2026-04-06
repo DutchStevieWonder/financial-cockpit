@@ -1,152 +1,246 @@
-import { useState, useEffect } from 'react'
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 
-const COLORS = [
-  '#4A90D9', '#5BB5A2', '#F5A623', '#E8743B', '#9B59B6',
-  '#8E6C4F', '#3498DB', '#95A5A6', '#2C3E50', '#E74C3C',
-  '#E91E63', '#FF9800', '#27AE60', '#BDC3C7',
-]
+// ─── Account colour palette ─────────────────────────────────────────────────────────────────────────────
+const ACCOUNT_COLORS = {
+  'Eetrekening':    '#10b981',
+  'Vaste lasten':   '#6366f1',
+  'Steven priv\u00e9':   '#0ea5e9',
+  'Jacomine priv\u00e9': '#ec4899',
+}
+function accountColor(name) {
+  return ACCOUNT_COLORS[name] || '#94a3b8'
+}
 
-export default function CategoryBreakdown({ month }) {
-  const [data, setData] = useState([])
-  const [total, setTotal] = useState(0)
+function fmt(n) {
+  return Math.abs(n).toLocaleString('nl-NL', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
+}
+
+function dateRange(month) {
+  const start = month + '-01'
+  const d = new Date(month + '-01')
+  d.setMonth(d.getMonth() + 1)
+  return { start, end: d.toISOString().split('T')[0] }
+}
+
+function monthLabel(month) {
+  return new Date(month + '-15').toLocaleDateString('nl-NL', { month: 'long', year: 'numeric' })
+}
+
+async function fetchMonthData(month) {
+  const { start, end } = dateRange(month)
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('amount, category_id, bank_account_id, categories(id, name, color), bank_accounts(id, name)')
+    .gte('transaction_date', start)
+    .lt('transaction_date', end)
+    .eq('is_transfer', false)
+    .lt('amount', 0)
+
+  if (error) {
+    console.error('[FC][CategoryBreakdown]', JSON.stringify({ level:'error', error }))
+    return { sorted: [], grandTotal: 0 }
+  }
+
+  const grp = {}
+  let grandTotal = 0
+
+  data?.forEach((tx) => {
+    const catId    = tx.category_id        || '__none__'
+    const catName  = tx.categories?.name   || 'Niet-toegewezen'
+    const catColor = tx.categories?.color  || '#BDC3C7'
+    const accId    = tx.bank_account_id    || '__unknown__'
+    const accName  = tx.bank_accounts?.name || 'Onbekend'
+    const amt      = Math.abs(tx.amount)
+
+    grandTotal += amt
+
+    if (!grp[catId]) grp[catId] = { id: catId, name: catName, color: catColor, total: 0, accounts: {} }
+    grp[catId].total += amt
+    if (!grp[catId].accounts[accId]) grp[catId].accounts[accId] = { name: accName, total: 0 }
+    grp[catId].accounts[accId].total += amt
+  })
+
+  return { sorted: Object.values(grp).sort((a, b) => b.total - a.total), grandTotal }
+}
+
+export default function CategoryBreakdown({ month, compareMonth }) {
+  const [dataA, setDataA] = useState({ sorted: [], grandTotal: 0 })
+  const [dataB, setDataB] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [expanded, setExpanded] = useState(null)
+  const [drillTxs, setDrillTxs] = useState([])
+  const [drillLoading, setDrillLoading] = useState(false)
 
-  useEffect(() => {
-    fetchData()
-  }, [month])
-
-  async function fetchData() {
+  const load = useCallback(async () => {
     setLoading(true)
-
-    // Calculate date range for the month
-    const startDate = `${month}-01`
-    const endDate = new Date(month + '-01')
-    endDate.setMonth(endDate.getMonth() + 1)
-    const endStr = endDate.toISOString().split('T')[0]
-
-    const { data: transactions, error } = await supabase
-      .from('transactions')
-      .select('amount, categories(name, color)')
-      .gte('transaction_date', startDate)
-      .lt('transaction_date', endStr)
-      .lt('amount', 0) // Only expenses
-
-    if (error) {
-      console.error('Error fetching categories:', error)
-      setLoading(false)
-      return
-    }
-
-    // Group by category
-    const grouped = {}
-    let totalExpenses = 0
-
-    transactions?.forEach((tx) => {
-      const catName = tx.categories?.name || 'Niet-toegewezen'
-      const catColor = tx.categories?.color || '#BDC3C7'
-      const absAmount = Math.abs(tx.amount)
-      totalExpenses += absAmount
-
-      if (!grouped[catName]) {
-        grouped[catName] = { name: catName, value: 0, color: catColor }
-      }
-      grouped[catName].value += absAmount
-    })
-
-    const sorted = Object.values(grouped).sort((a, b) => b.value - a.value)
-    setData(sorted)
-    setTotal(totalExpenses)
+    setExpanded(null)
+    const [a, b] = await Promise.all([
+      fetchMonthData(month),
+      compareMonth ? fetchMonthData(compareMonth) : Promise.resolve(null),
+    ])
+    setDataA(a)
+    setDataB(b)
     setLoading(false)
+  }, [month, compareMonth])
+
+  useEffect(() => { load() }, [load])
+
+  async function toggleExpand(catId) {
+    if (expanded === catId) { setExpanded(null); setDrillTxs([]); return }
+    setExpanded(catId)
+    setDrillLoading(true)
+    const { start, end } = dateRange(month)
+    const { data } = await supabase
+      .from('transactions')
+      .select('amount, description, transaction_date, bank_accounts(name)')
+      .eq('category_id', catId)
+      .eq('is_transfer', false)
+      .lt('amount', 0)
+      .gte('transaction_date', start)
+      .lt('transaction_date', end)
+      .order('transaction_date', { ascending: false })
+      .limit(8)
+    setDrillTxs(data || [])
+    setDrillLoading(false)
   }
 
-  if (loading) {
-    return <div className="animate-pulse text-slate-400 p-4">Laden...</div>
-  }
+  if (loading) return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <div className="animate-pulse text-slate-400 text-sm">Laden\u2026</div>
+    </div>
+  )
 
-  if (data.length === 0) {
-    return (
-      <div className="text-slate-400 text-sm p-4">
-        Geen uitgaven gevonden voor deze maand.
-      </div>
-    )
-  }
+  if (dataA.sorted.length === 0) return (
+    <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <h3 className="text-lg font-semibold text-brand-500 mb-2">Uitgaven per categorie</h3>
+      <p className="text-sm text-slate-400">Geen uitgaven gevonden voor deze maand.</p>
+    </div>
+  )
+
+  const legendAccounts = {}
+  dataA.sorted.forEach(cat => Object.values(cat.accounts).forEach(acc => { legendAccounts[acc.name] = accountColor(acc.name) }))
+  const maxTotal = Math.max(...dataA.sorted.map(c => c.total), 1)
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-      <h3 className="text-lg font-semibold text-brand-500 mb-4">
-        Uitgaven per categorie
-      </h3>
-
-      <div className="flex flex-col md:flex-row items-center gap-6">
-        {/* Pie chart */}
-        <div className="w-48 h-48">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="name"
-                cx="50%"
-                cy="50%"
-                outerRadius={80}
-                innerRadius={40}
-              >
-                {data.map((entry, index) => (
-                  <Cell
-                    key={entry.name}
-                    fill={entry.color || COLORS[index % COLORS.length]}
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(value) =>
-                  `€${value.toLocaleString('nl-NL', {
-                    minimumFractionDigits: 2,
-                  })}`
-                }
-              />
-            </PieChart>
-          </ResponsiveContainer>
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-5">
+        <div>
+          <h3 className="text-lg font-semibold text-brand-500">Uitgaven per categorie</h3>
+          {compareMonth && (
+            <p className="text-xs text-slate-400 mt-0.5">
+              Dikke balk = {monthLabel(month)} \u00b7 dunne balk = {monthLabel(compareMonth)}
+            </p>
+          )}
         </div>
-
-        {/* Legend / list */}
-        <div className="flex-1 w-full">
-          {data.map((cat, i) => {
-            const percentage = total > 0 ? ((cat.value / total) * 100).toFixed(1) : 0
-            return (
-              <div
-                key={cat.name}
-                className="flex items-center justify-between py-2 border-b border-slate-100 last:border-0"
-              >
-                <div className="flex items-center gap-2">
-                  <span
-                    className="w-3 h-3 rounded-full inline-block"
-                    style={{
-                      backgroundColor:
-                        cat.color || COLORS[i % COLORS.length],
-                    }}
-                  />
-                  <span className="text-sm text-slate-700">{cat.name}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-sm font-medium text-slate-800">
-                    €{cat.value.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}
-                  </span>
-                  <span className="text-xs text-slate-400 ml-2">
-                    {percentage}%
-                  </span>
-                </div>
-              </div>
-            )
-          })}
-
-          <div className="flex items-center justify-between pt-3 mt-1 border-t-2 border-slate-200">
-            <span className="text-sm font-semibold text-slate-700">Totaal</span>
-            <span className="text-sm font-bold text-slate-900">
-              €{total.toLocaleString('nl-NL', { minimumFractionDigits: 2 })}
+        <div className="flex flex-wrap gap-3">
+          {Object.entries(legendAccounts).map(([name, color]) => (
+            <span key={name} className="flex items-center gap-1.5 text-xs text-slate-500">
+              <span className="w-2.5 h-2.5 rounded-sm shrink-0" style={{ backgroundColor: color }} />
+              {name}
             </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-0.5">
+        {dataA.sorted.map(cat => {
+          const isOpen  = expanded === cat.id
+          const barPct  = (cat.total / maxTotal) * 100
+          const catB    = dataB?.sorted.find(c => c.id === cat.id)
+          const barPctB = catB ? (catB.total / maxTotal) * 100 : null
+          const pct     = catB ? ((cat.total - catB.total) / catB.total) * 100 : null
+          const pctColor = pct === null ? '' : pct > 5 ? 'text-red-500' : pct < -5 ? 'text-emerald-600' : 'text-slate-400'
+          const segments = Object.entries(cat.accounts)
+            .sort((a, b) => b[1].total - a[1].total)
+            .map(([id, acc]) => ({ id, name: acc.name, total: acc.total, pct: (acc.total / cat.total) * 100, color: accountColor(acc.name) }))
+
+          return (
+            <div key={cat.id} className="rounded-lg overflow-hidden">
+              <button
+                onClick={() => toggleExpand(cat.id)}
+                className="w-full text-left px-2 py-2 hover:bg-slate-50 transition-colors rounded-lg group"
+              >
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                  <span className="text-sm font-medium text-slate-700 flex-1 text-left">{cat.name}</span>
+                  <span className="text-sm font-bold text-slate-800">\u20ac{fmt(cat.total)}</span>
+                  {pct !== null && (
+                    <span className={`text-xs font-medium w-14 text-right ${pctColor}`}>
+                      {pct > 0 ? '\u25b2' : pct < 0 ? '\u25bc' : '\u2192'} {Math.abs(pct).toFixed(0)}%
+                    </span>
+                  )}
+                  <span className="text-slate-300 group-hover:text-slate-500 text-[10px] w-3">{isOpen ? '\u25b2' : '\u25bc'}</span>
+                </div>
+                <div className="pl-4">
+                  <div className="h-3 rounded-full overflow-hidden flex" style={{ width: `${Math.max(barPct, 3)}%`, backgroundColor: '#f1f5f9' }}>
+                    {segments.map(seg => (
+                      <div key={seg.id} style={{ width: `${seg.pct}%`, backgroundColor: seg.color }} title={`${seg.name}: \u20ac${fmt(seg.total)}`} />
+                    ))}
+                  </div>
+                  {catB && barPctB !== null && (
+                    <div className="h-1.5 rounded-full overflow-hidden flex mt-0.5 opacity-50" style={{ width: `${Math.max(barPctB, 2)}%`, backgroundColor: '#f1f5f9' }}>
+                      {Object.entries(catB.accounts).sort((a, b) => b[1].total - a[1].total).map(([id, acc]) => (
+                        <div key={id} style={{ width: `${(acc.total / catB.total) * 100}%`, backgroundColor: accountColor(acc.name) }} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </button>
+
+              {isOpen && (
+                <div className="mx-1 mb-2 px-4 py-3 bg-slate-50 rounded-lg border border-slate-100">
+                  {drillLoading ? <div className="text-slate-400 text-xs animate-pulse">Laden\u2026</div> : (
+                    <>
+                      <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Per rekening</p>
+                      <div className="space-y-1.5 mb-4">
+                        {segments.map(seg => {
+                          const segB    = catB ? Object.values(catB.accounts).find(a => a.name === seg.name) : null
+                          const segPct  = segB ? ((seg.total - segB.total) / segB.total) * 100 : null
+                          return (
+                            <div key={seg.id} className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-sm shrink-0" style={{ backgroundColor: seg.color }} />
+                              <span className="text-xs text-slate-600 flex-1">{seg.name}</span>
+                              <span className="text-xs font-semibold text-slate-800">\u20ac{fmt(seg.total)}</span>
+                              {segB && <span className="text-xs text-slate-400 w-20 text-right">vs \u20ac{fmt(segB.total)}</span>}
+                              {segPct !== null && (
+                                <span className={`text-xs font-medium w-14 text-right ${Math.abs(segPct) < 3 ? 'text-slate-400' : segPct > 0 ? 'text-red-400' : 'text-emerald-500'}`}>
+                                  {segPct > 0 ? '+' : ''}{segPct.toFixed(0)}%
+                                </span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                      {drillTxs.length > 0 && (
+                        <>
+                          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Laatste transacties</p>
+                          <div className="space-y-1.5">
+                            {drillTxs.map((tx, i) => (
+                              <div key={i} className="flex items-start justify-between gap-2">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs text-slate-700 truncate">{tx.description}</p>
+                                  <p className="text-xs text-slate-400">{tx.transaction_date} \u00b7 {tx.bank_accounts?.name}</p>
+                                </div>
+                                <span className="text-xs font-semibold text-slate-700 shrink-0">\u20ac{fmt(Math.abs(tx.amount))}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        <div className="flex items-center justify-between pt-3 mt-2 border-t-2 border-slate-200 px-2">
+          <span className="text-sm font-semibold text-slate-700">Totaal uitgaven</span>
+          <div className="text-right">
+            <span className="text-sm font-bold text-slate-900">\u20ac{fmt(dataA.grandTotal)}</span>
+            {dataB && <span className="text-xs text-slate-400 ml-2">vs \u20ac{fmt(dataB.grandTotal)} {monthLabel(compareMonth)}</span>}
           </div>
         </div>
       </div>
