@@ -32,70 +32,90 @@ export default function Dashboard() {
   const { month, setMonth } = useMonth()
   const months = getMonthOptions()
 
-  const [compareMode, setCompareMode]   = useState(false)
+  // Two-month comparison state
+  const [compareMode, setCompareMode] = useState(false)
   const [compareMonth, setCompareMonth] = useState(() => prevMonthOf(new Date().toISOString().substring(0, 7)))
 
   return (
     <div className="space-y-6">
-      {/* KPI summary cards */}
+      {/* ── KPI summary cards ── */}
       <DashboardKPIs month={month} />
 
-      {/* Welcome + month selectors */}
+      {/* ── Welcome + month selectors ── */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Welkom, {profile?.display_name}</h2>
-          <p className="text-sm text-slate-500">Overzicht van je financi\u00ebn</p>
+          <h2 className="text-xl font-bold text-slate-800">
+            Welkom, {profile?.display_name}
+          </h2>
+          <p className="text-sm text-slate-500">Overzicht van je financiën</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          {/* Primary month */}
           <div className="flex flex-col gap-0.5">
             <label className="text-xs text-slate-400 px-1">Maand</label>
             <select
               value={month}
-              onChange={e => setMonth(e.target.value)}
-              className="border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
+              onChange={(e) => setMonth(e.target.value)}
+              className="border border-slate-300 rounded-lg px-3 py-2 text-sm
+                         focus:outline-none focus:ring-2 focus:ring-brand-400"
             >
-              {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+              {months.map((m) => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
             </select>
           </div>
 
+          {/* Compare toggle */}
           <button
-            onClick={() => { if (!compareMode) setCompareMonth(prevMonthOf(month)); setCompareMode(!compareMode) }}
+            onClick={() => {
+              if (!compareMode) setCompareMonth(prevMonthOf(month))
+              setCompareMode(!compareMode)
+            }}
             className={`mt-5 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
-              compareMode ? 'bg-brand-500 text-white border-brand-500' : 'bg-white text-slate-500 border-slate-300 hover:border-brand-400'
+              compareMode
+                ? 'bg-brand-500 text-white border-brand-500'
+                : 'bg-white text-slate-500 border-slate-300 hover:border-brand-400'
             }`}
           >
-            \u21cc Vergelijk
+            ⇌ Vergelijk
           </button>
 
+          {/* Compare month selector */}
           {compareMode && (
             <div className="flex flex-col gap-0.5">
               <label className="text-xs text-slate-400 px-1">Vergelijk met</label>
               <select
                 value={compareMonth}
-                onChange={e => setCompareMonth(e.target.value)}
-                className="border border-brand-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 bg-brand-50"
+                onChange={(e) => setCompareMonth(e.target.value)}
+                className="border border-brand-300 rounded-lg px-3 py-2 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-brand-400 bg-brand-50"
               >
-                {months.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                {months.map((m) => (
+                  <option key={m.value} value={m.value}>{m.label}</option>
+                ))}
               </select>
             </div>
           )}
         </div>
       </div>
 
-      {/* Personal finance — eigen domein only */}
+      {/* ── Personal finance (privé, only own domain) ── */}
       <PersonalFinanceBlock month={month} />
 
-      {/* Spending per category — stacked per account + drill-down + optional comparison */}
-      <CategoryBreakdown month={month} compareMonth={compareMode ? compareMonth : undefined} />
+      {/* ── Category spending — stacked per account + drill-down ── */}
+      <CategoryBreakdown
+        month={month}
+        compareMonth={compareMode ? compareMonth : undefined}
+      />
 
-      {/* Budget tracking per domain */}
+      {/* ── Budget tracking per domain ── */}
       <BudgetBreakdown month={month} />
 
-      {/* Sparen & Beleggen */}
+      {/* ── Sparen & Beleggen ── */}
       <SavingsDashboard month={month} />
 
-      {/* Net worth & goals */}
+      {/* ── Net worth & goals ── */}
       <NetWorthOverview />
       <GoalProgress />
     </div>
