@@ -81,6 +81,7 @@ export default function DashboardKPIs({ month }) {
       value: curr.inkomen,
       prevValue: prev.inkomen,
       color: '#10b981',
+      bgColor: '#f0fdf4',
       higherIsBetter: true,
     },
     {
@@ -88,6 +89,7 @@ export default function DashboardKPIs({ month }) {
       value: curr.uitgaven,
       prevValue: prev.uitgaven,
       color: '#f59e0b',
+      bgColor: '#fffbeb',
       higherIsBetter: false,
     },
     {
@@ -95,6 +97,7 @@ export default function DashboardKPIs({ month }) {
       value: curr.saldo,
       prevValue: prev.saldo,
       color: curr.saldo >= 0 ? '#10b981' : '#ef4444',
+      bgColor: curr.saldo >= 0 ? '#f0fdf4' : '#fef2f2',
       higherIsBetter: true,
     },
     {
@@ -102,6 +105,7 @@ export default function DashboardKPIs({ month }) {
       value: curr.gespaard,
       prevValue: prev.gespaard,
       color: '#6366f1',
+      bgColor: '#eef2ff',
       higherIsBetter: true,
     },
   ]
@@ -113,7 +117,7 @@ export default function DashboardKPIs({ month }) {
         const isUp = pct !== null && pct > 0
         const isGood = card.higherIsBetter ? isUp : !isUp
         const deltaColor = pct === null ? '' : isGood ? 'text-emerald-600' : 'text-red-500'
-        const deltaSymbol = pct === null ? '' : isUp ? '\u25b2' : '\u25bc'
+        const deltaSymbol = pct === null ? '' : isUp ? '▲' : '▼'
 
         return (
           <div
@@ -131,10 +135,10 @@ export default function DashboardKPIs({ month }) {
               )}
             </div>
             <p className="text-xl font-bold" style={{ color: card.color }}>
-              {card.value < 0 ? '-' : ''}\u20ac{fmt(card.value)}
+              {card.value < 0 ? '-' : ''}€{fmt(card.value)}
             </p>
             <p className="text-xs text-slate-400 mt-0.5">
-              vorig: \u20ac{fmt(card.prevValue)}
+              vorig: €{fmt(card.prevValue)}
             </p>
           </div>
         )
